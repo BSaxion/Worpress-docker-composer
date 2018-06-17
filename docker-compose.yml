@@ -1,0 +1,61 @@
+version: "3"
+
+services:
+  wordpress:
+    image: "wordpress:${WP_VERSION}-php${PHP_VERSION}-apache"
+    environment:
+      VIRTUAL_HOST: "${DOCKER_DEV_DOMAIN}"
+      WORDPRESS_DB_HOST: "${WORDPRESS_DB_HOST}"
+      WORDPRESS_DB_NAME: "${WORDPRESS_DB_NAME}"
+      WORDPRESS_DB_PASSWORD: "${WORDPRESS_DB_PASSWORD}"
+      WORDPRESS_DB_USER: "${WORDPRESS_DB_USER}"
+    depends_on:
+      - "mysql"
+    networks:
+      - "front"
+      - "back"
+    volumes:
+      - ./wp-content:/var/www/html/wp-content
+      - ./wp-content:/var/www/html/wp-content/plugins/my-plugin
+      - ./wp-content:/var/www/html/wp-content/theme/my-theme
+  wp-cli:
+    image: "wordpress:cli-php${PHP_VERSION}"
+    environment:
+      - APACHE_RUN_USER="www-data"
+      - APACHE_RUN_GROUP="www-data"
+    depends_on:
+      - "mysql"
+    networks:
+      - "back"
+    volumes:
+      - ./wp-content:/var/www/html
+      - ./bin/install-wp.sh:/usr/local/bin/install-wp
+      #- .:/var/www/html/wp-content/plugins/my-plugin
+      #- .:/var/www/html/wp-content/theme/my-theme
+  mysql:
+    image: "mariadb:10.2"
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "${MYSQL_ALLOW_EMPTY_PASSWORD}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE}"
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
+    networks:
+      - "back"
+    #volumes:
+      #- ./data:/docker-entrypoint-initdb.d
+  proxy:
+    image: "jwilder/nginx-proxy:alpine"
+    ports:
+      - "80:80"
+    networks:
+      front:
+        aliases:
+          - "${DOCKER_DEV_DOMAIN}"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock
+
+networks:
+  front: {}
+  back: {}
+
+volumes:
+  wp-content: {}
